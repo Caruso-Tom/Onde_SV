@@ -137,18 +137,6 @@ float dz, float t)
         pn1[idx] += dt*dt * excitation;
     }
 }
-
-__global__ void lissage_courbe(float *courbe, float freq_grille,float dx_courbe)
-{
-    int idx=2*(threadIdx.x+1+blockIdx.x*blockDim.x);
-    float nouveau_point = 0;
-    float cutoff= freq_grille/2;
-    for(int j =0; j<blockDim.x *gridDim.x+1;j++)
-    {
-        nouveau_point+= dx_courbe*courbe[2*j+1]*cutoff*sinc(cutoff * dx_courbe*(idx-2*j+1));
-    }
-    courbe[idx+1]=nouveau_point;
-}
 __global__ void Mise_a_zero_miroir_velocity (float *p, int *coor_fantome_z)
 {
     if(threadIdx.y+blockDim.y *blockIdx.y+1>coor_fantome_z[threadIdx.x+blockDim.x *blockIdx.x+1]-1)
@@ -183,12 +171,11 @@ x_surface = x_surface .astype(np.float32)
 x_surface_gpu = cuda.mem_alloc(x_surface .nbytes)
 cuda.memcpy_htod(x_surface_gpu, x_surface)
 
-z_surface = np.exp(-5*np.square(x_surface))
+z_surface = 0.5*np.sin(5*np.square(x_surface)+0.5)
 z_surface = z_surface.astype(np.float32)
 z_surface_gpu = cuda.mem_alloc(z_surface.nbytes)
 cuda.memcpy_htod(z_surface_gpu, z_surface)
 
-# Filtrage de la topographie
 def filtre_surface(data,cutoff,fs,order):
     normal_cutoff=2*cutoff/fs
     b,a=butter(order,normal_cutoff,btype=('low'),analog=False)
@@ -218,7 +205,6 @@ cuda.memcpy_htod(Coor_point_fantome_gpu, Coor_point_fantome )
 # Importation des fonctions cuda
 iteration_temps = mod.get_function("iteration_temps")
 Calcul_point_miroir = mod.get_function("Calcul_point_miroir")
-lissage_courbe = mod.get_function("lissage_courbe")
 Mise_a_zero_miroir_velocity=mod.get_function("Mise_a_zero_miroir_velocity")
 Iteration_miroir_velocity=mod.get_function("Iteration_miroir_velocity")
 
@@ -239,11 +225,9 @@ while nt < Nt:
     # Calcul sur GPU
     iteration_temps(Pn_gpu, Pn1_gpu, Pn1_gpu_cpy, Rho_gpu, V_gpu, i_source, j_source, dt, dx, dz, t, block=(32, 32, 1),
                     grid=(longueur_grille_x, longueur_grille_z))
-
     Mise_a_zero_miroir_velocity(Pn1_gpu, Coor_point_fantome_gpu, block=(32, 32, 1), grid=(longueur_grille_x, longueur_grille_z))
 
-    for i in [1, 20]:
-        cuda.memcpy_dtod(Pn1_gpu_cpy, Pn1_gpu, Pn1.nbytes)
+    for i in [1, 10]:
         Iteration_miroir_velocity(Coor_miroir_gpu, Pn1_gpu, Pn1_gpu_cpy, Coor_point_fantome_gpu, dx, dz, hauteur_matrice_z, block=(32, 1, 1), grid=(longueur_grille_x, 1))
     cuda.memcpy_dtod(Pn_gpu, Pn1_gpu_cpy, Pn1.nbytes)
     cuda.memcpy_dtod(Pn1_gpu_cpy, Pn1_gpu, Pn1.nbytes)
