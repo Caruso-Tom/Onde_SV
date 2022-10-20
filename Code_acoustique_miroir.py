@@ -4,9 +4,10 @@ import pycuda.driver as cuda
 from pycuda.compiler import SourceModule
 from scipy.signal import butter, filtfilt
 
-cuda.init()
+
 
 # On choisit le GPU sur lequel le code va tourner, entre 0 et 3
+cuda.init()
 dev = cuda.Device(1)
 contx = dev.make_context()
 
