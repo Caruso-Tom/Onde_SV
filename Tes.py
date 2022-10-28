@@ -11,7 +11,7 @@ size_x = 64
 size_y = 32
 
 c = np.zeros((size_x,size_y))
-"""a = np.ones((size_y, size_x))
+a = np.ones((size_y, size_x))
 b = np.ones((size_y, size_x))
 a = a.astype(np.float32)
 b = b.astype(np.float32)
@@ -20,11 +20,7 @@ a_gpu = cuda.mem_alloc(a.nbytes)
 b_gpu = cuda.mem_alloc(b.nbytes)
 c_gpu = cuda.mem_alloc(c.nbytes)
 cuda.memcpy_htod(a_gpu, a)
-cuda.memcpy_htod(b_gpu, b)"""
-
-a_gpu = pycuda.gpuarray.ones(size_x*size_y)
-b_gpu = pycuda.gpuarray.ones(size_x*size_y)
-c_gpu = pycuda.gpuarray.zeros(size_x*size_y)
+cuda.memcpy_htod(b_gpu, b)
 
 mod = SourceModule("""
     __global__ void add(float *a,float *b,float *c)
